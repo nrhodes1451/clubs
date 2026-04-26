@@ -1,5 +1,5 @@
 import { useGame } from './GameContext';
-import { suitName } from '../game/cards';
+import { clubCostForRank, suitName } from '../game/cards';
 import { storedGoodsCount } from '../game/selectors';
 
 export function ActionPrompt() {
@@ -35,12 +35,20 @@ export function ActionPrompt() {
         </div>
         <div className="prompt__body">
           {isFollower
-            ? 'As a follower you place 1 good under 1 club. '
-            : 'Click empty club slots in your tableau to store goods face-down. Each club holds at most one good. '}
+            ? 'As a follower you draw 1 card from the deck and store it face-down under 1 club. '
+            : 'Click empty club slots in your tableau. Each click draws the top card of the draw pile and stores it face-down under that club. '}
           Remaining to place: <strong>{phase.remaining}</strong>.
         </div>
-        {!isFollower && (
-          <div className="prompt__actions">
+        <div className="prompt__actions">
+          {isFollower ? (
+            <button
+              type="button"
+              className="btn btn--cancel"
+              onClick={() => dispatch({ type: 'PASS_FOLLOWER' })}
+            >
+              Pass
+            </button>
+          ) : (
             <button
               type="button"
               className="btn btn--cancel"
@@ -48,8 +56,8 @@ export function ActionPrompt() {
             >
               Cancel
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }
@@ -80,6 +88,13 @@ export function ActionPrompt() {
               onClick={() => dispatch({ type: 'SELL_CONFIRM' })}
             >
               Confirm
+            </button>
+            <button
+              type="button"
+              className="btn btn--cancel"
+              onClick={() => dispatch({ type: 'PASS_FOLLOWER' })}
+            >
+              Pass
             </button>
           </div>
         </div>
@@ -213,10 +228,19 @@ export function ActionPrompt() {
           <>
             <div className="prompt__body">
               Click a club in your hand to select it as the target.
-              {isFollower && ' You must pay the full band cost from your hand.'}
+              {isFollower &&
+                ' You must pay the full club value from your hand.'}
             </div>
-            {!isFollower && (
-              <div className="prompt__actions">
+            <div className="prompt__actions">
+              {isFollower ? (
+                <button
+                  type="button"
+                  className="btn btn--cancel"
+                  onClick={() => dispatch({ type: 'PASS_FOLLOWER' })}
+                >
+                  Pass
+                </button>
+              ) : (
                 <button
                   type="button"
                   className="btn btn--cancel"
@@ -224,8 +248,8 @@ export function ActionPrompt() {
                 >
                   Cancel
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : (
           <>
@@ -235,14 +259,16 @@ export function ActionPrompt() {
                 {phase.club.rank}
                 {phase.club.suit}
               </strong>{' '}
-              (band {phase.club.band}). Cost ={' '}
+              (value {clubCostForRank(phase.club.rank)}). Cost ={' '}
               {isFollower ? (
                 <>
-                  {phase.club.band} <em>(full; no reduction)</em>
+                  {clubCostForRank(phase.club.rank)}{' '}
+                  <em>(full; no reduction)</em>
                 </>
               ) : (
                 <>
-                  max(0, {phase.club.band} - {phase.diamond.band})
+                  max(0, {clubCostForRank(phase.club.rank)} -{' '}
+                  {phase.diamond.band})
                 </>
               )}{' '}
               = <strong>{phase.remaining}</strong>.
@@ -264,7 +290,15 @@ export function ActionPrompt() {
               >
                 Confirm
               </button>
-              {!isFollower && (
+              {isFollower ? (
+                <button
+                  type="button"
+                  className="btn btn--cancel"
+                  onClick={() => dispatch({ type: 'PASS_FOLLOWER' })}
+                >
+                  Pass
+                </button>
+              ) : (
                 <button
                   type="button"
                   className="btn btn--cancel"

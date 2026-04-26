@@ -25,8 +25,8 @@ const ROLES: RoleRow[] = [
   {
     suit: 'D',
     name: 'Build',
-    active: 'Build a club; cost = max(0, clubBand - n)',
-    follower: 'Build a club at full clubBand cost',
+    active: 'Build a club; cost = max(0, clubValue - n)',
+    follower: 'Build a club at full clubValue cost',
   },
   {
     suit: 'C',

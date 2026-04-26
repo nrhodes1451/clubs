@@ -40,6 +40,21 @@ export function bandForRank(rank: Rank): Band {
   }
 }
 
+export function clubCostForRank(rank: Rank): number {
+  switch (rank) {
+    case 'A':
+      return 14;
+    case 'K':
+      return 13;
+    case 'Q':
+      return 12;
+    case 'J':
+      return 11;
+    default:
+      return Number(rank);
+  }
+}
+
 export function cardId(suit: Suit, rank: Rank): string {
   return `${rank}${suit}`;
 }

@@ -1,4 +1,4 @@
-import { buildDeck } from './cards';
+import { buildDeck, clubCostForRank } from './cards';
 import { shuffleWithSeed } from './rng';
 import type {
   Action,
@@ -20,7 +20,7 @@ import {
   hasClubInHand,
 } from './selectors';
 
-const HAND_SIZE = 7;
+const HAND_SIZE = 13;
 const LOG_LIMIT = 200;
 
 function freshPlayer(): PlayerState {
@@ -138,8 +138,8 @@ function startFollowerLeg(
   let phase: Phase | null = null;
   switch (priorKind) {
     case 'producing': {
-      if (canFollowProduce(fp) && role.spade) {
-        const remaining = Math.min(1, emptyClubSlots(fp), fp.hand.length);
+      if (canFollowProduce(fp, state) && role.spade) {
+        const remaining = Math.min(1, emptyClubSlots(fp));
         phase = {
           kind: 'producing',
           actor: follower,
@@ -242,11 +242,7 @@ export function reducer(state: GameState, action: Action): GameState {
       switch (card.suit) {
         case 'S': {
           const { player: p2 } = removeFromHand(player, card.id);
-          const remaining = Math.min(
-            card.band,
-            emptyClubSlots(p2),
-            p2.hand.length,
-          );
+          const remaining = Math.min(card.band, emptyClubSlots(p2));
           let next = setPlayer(state, current, p2);
           next = {
             ...next,
@@ -316,15 +312,35 @@ export function reducer(state: GameState, action: Action): GameState {
       );
       if (slotIdx === -1) return state;
       if (phase.chosenClubIds.includes(action.clubId)) return state;
-      if (player.hand.length === 0) return state;
 
-      const good = player.hand[0];
-      const hand = player.hand.slice(1);
+      const {
+        drawn,
+        draw,
+        discard,
+        rngState,
+      } = drawN(state.draw, state.discard, state.rngState, 1);
+      if (drawn.length === 0) {
+        const isActiveLeg = actor === state.current;
+        let endNext: GameState = { ...state, draw, discard, rngState };
+        if (isActiveLeg) {
+          endNext = { ...endNext, discard: [...endNext.discard, phase.spade] };
+        }
+        endNext = withLog(
+          endNext,
+          `P${actor + 1}${isActiveLeg ? '' : ' (follower)'} produced ${phase.chosenClubIds.length} good(s) (deck empty)`,
+        );
+        return afterActorResolved(endNext, actor, 'producing', {
+          spade: phase.spade,
+        });
+      }
+
+      const good = drawn[0];
       const tableau = player.tableau.map((e, i) =>
         i === slotIdx ? { ...e, good } : e,
       );
-      const newPlayer: PlayerState = { ...player, hand, tableau };
-      let next = setPlayer(state, actor, newPlayer);
+      const newPlayer: PlayerState = { ...player, tableau };
+      let next: GameState = { ...state, draw, discard, rngState };
+      next = setPlayer(next, actor, newPlayer);
 
       const remaining = phase.remaining - 1;
       const chosenClubIds = [...phase.chosenClubIds, action.clubId];
@@ -464,9 +480,10 @@ export function reducer(state: GameState, action: Action): GameState {
         (c) => c.id === action.clubId && c.suit === 'C',
       );
       if (!club) return state;
+      const clubCost = clubCostForRank(club.rank);
       const cost = isActiveLeg
-        ? Math.max(0, club.band - phase.diamond.band)
-        : club.band;
+        ? Math.max(0, clubCost - phase.diamond.band)
+        : clubCost;
       const availableForPayment = player.hand.length - 1;
       if (availableForPayment < cost) return state;
       return {
@@ -532,6 +549,21 @@ export function reducer(state: GameState, action: Action): GameState {
       });
     }
 
+    case 'PASS_FOLLOWER': {
+      const phase = state.phase;
+      if (
+        phase.kind !== 'producing' &&
+        phase.kind !== 'selling' &&
+        phase.kind !== 'building'
+      )
+        return state;
+      if (phase.actor === state.current) return state;
+      return withLog(
+        endTurn(state),
+        `P${phase.actor + 1} passed follower ${phase.kind}; turn ends`,
+      );
+    }
+
     case 'CANCEL_PHASE': {
       const phase = state.phase;
       if (phase.kind === 'idle' || phase.kind === 'gameOver') return state;
@@ -541,18 +573,18 @@ export function reducer(state: GameState, action: Action): GameState {
       const player = state.players[actor];
 
       if (phase.kind === 'producing') {
-        let hand = [...player.hand];
+        const draw = [...state.draw];
         const tableau = player.tableau.map((e) => ({ ...e }));
         for (const clubId of phase.chosenClubIds) {
           const idx = tableau.findIndex((e) => e.club.id === clubId);
           if (idx !== -1 && tableau[idx].good) {
-            hand = [tableau[idx].good!, ...hand];
+            draw.push(tableau[idx].good!);
             tableau[idx] = { club: tableau[idx].club };
           }
         }
-        hand = [phase.spade, ...hand];
+        const hand = [phase.spade, ...player.hand];
         const np = { ...player, hand, tableau };
-        let next = setPlayer(state, actor, np);
+        let next = setPlayer({ ...state, draw }, actor, np);
         next = { ...next, phase: { kind: 'idle' } };
         return withLog(next, `P${actor + 1} cancelled produce`);
       }

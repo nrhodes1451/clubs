@@ -34,7 +34,7 @@ export function Tableau({ playerIdx }: TableauProps) {
           let selected = false;
           let disabled = true;
           let onClickClub: (() => void) | undefined;
-          let goodFaceDown = !isActor;
+          let goodFaceDown = true;
           let goodHighlight = false;
           let goodSelected = false;
           let goodDisabled = true;
@@ -53,7 +53,6 @@ export function Tableau({ playerIdx }: TableauProps) {
               selected = true;
             }
           } else if (isActor && phase.kind === 'selling' && entry.good) {
-            goodFaceDown = false;
             const picked = phase.selectedGoodIds.includes(entry.good.id);
             goodSelected = picked;
             const isFollowerLeg = phase.actor !== state.current;

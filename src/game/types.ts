@@ -87,4 +87,5 @@ export type Action =
   | { type: 'BUILD_CHOOSE_CLUB'; clubId: CardId }
   | { type: 'BUILD_TOGGLE_PAYMENT'; cardId: CardId }
   | { type: 'BUILD_CONFIRM' }
-  | { type: 'CANCEL_PHASE' };
+  | { type: 'CANCEL_PHASE' }
+  | { type: 'PASS_FOLLOWER' };

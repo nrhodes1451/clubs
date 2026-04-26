@@ -22,7 +22,7 @@ npm run preview
 
 - Standard 52-card deck. Each card has a **band** derived from rank:
   - `2/3/4` = 1, `5/6/7` = 2, `8/9/10` = 3, `J/Q/K` = 4, `A` = 5.
-- Each player is dealt 7 cards. Player 1 starts.
+- Each player is dealt 13 cards. Player 1 starts.
 - On your turn, **either** play a card from your hand for its suit action, **or** draw 1 card (always available).
 - When the draw pile is empty, the discard pile is reshuffled to form a new one.
 
@@ -32,16 +32,18 @@ When the active player plays a role card, **both players** perform the action in
 
 | Suit | Action | Active effect (n = played card's band) | Follower base effect |
 | ---- | ------ | -------------------------------------- | -------------------- |
-| Spades ♠ | Produce | Store up to `n` cards from your hand face-down as goods under up to `n` different clubs (one good per club). | Store 1 card from your hand face-down under 1 club. |
+| Spades ♠ | Produce | Draw `n` cards from the deck and store them face-down as goods under up to `n` different clubs (one good per club). | Draw 1 card from the deck and store it face-down under 1 club. |
 | Hearts ♥ | Sell | Either: remove `n` stored goods and draw **sum of those goods' clubs' bands**, **or** remove 1 stored good and draw `n +` that club's band. | Remove 1 stored good and draw that club's band (no mode choice, no `+n` bonus). |
-| Diamonds ♦ | Build | Pick a club in hand. Cost = max(0, clubBand - diamondBand). Pay by discarding that many extra cards. Club moves to your tableau. | Pick a club in hand. Pay the **full** `clubBand` cost from hand. Club moves to your tableau (no diamond reduction). |
+| Diamonds ♦ | Build | Pick a club in hand. Cost = max(0, clubValue - diamondBand). Pay by discarding that many extra cards. Club moves to your tableau. | Pick a club in hand. Pay the **full** `clubValue` cost from hand. Club moves to your tableau (no diamond reduction). |
+
+Club value: `2`-`10` use their pip value; `J` = 11, `Q` = 12, `K` = 13, `A` = 14.
 | Clubs ♣ | - | Cannot be played for an action; clubs enter the tableau only via Build. | - |
 
 ### Follow rules
 
 - Active player resolves first, then the follower resolves their base version, then the turn passes.
 - If the follower cannot legally perform their base action (no empty club slot / no stored goods / no affordable club), they skip and the turn passes.
-- The follower must act if they can (no voluntary decline).
+- The follower may also voluntarily pass at any point during their leg (before confirming); the turn then ends.
 - The role card itself is played and discarded by the active player only - the follower does not spend a card for their base action.
 - `DRAW_CARD` (the fallback turn action) does not trigger a follower leg.
 
@@ -84,6 +86,7 @@ All turn logic is driven through discrete, debuggable actions:
 - `BUILD_TOGGLE_PAYMENT { cardId }` - toggle a hand card as payment
 - `BUILD_CONFIRM` - finalize a build
 - `CANCEL_PHASE` - back out of an in-progress action; restores removed cards
+- `PASS_FOLLOWER` - voluntarily decline the current follower leg; ends the turn
 
 Every reducer action appends a line to `state.log`, surfaced via the "Show debug log" toggle in the footer.
 
@@ -92,4 +95,4 @@ Every reducer action appends a line to `state.log`, surfaced via the "Show debug
 - Hand privacy: the current **actor**'s hand is rendered face-up and interactive. During a follower leg the follower becomes the actor (and their hand flips face-up). When the phase resolves, the turn passes and the hand returns to the active player's control.
 - "Your turn" badge marks the overall active player; "Following" badge appears on the opposite player during a follower leg.
 - Deterministic shuffles via `mulberry32` seeded from `Date.now()`. Pass a fixed seed via `START_GAME { seed }` for reproducible games.
-- Goods stored under a club are shown face-down to both players (they are "stored goods" until sold). When sold, they move to the discard pile and become visible.
+- Goods stored under a club are hidden from both players (including the owner) until sold. When sold, they move to the discard pile and become visible.

@@ -1,3 +1,4 @@
+import { clubCostForRank } from './cards';
 import type { Card, GameState, PlayerIndex, PlayerState } from './types';
 
 export function followerOf(i: PlayerIndex): PlayerIndex {
@@ -55,8 +56,8 @@ export function canPlayCard(state: GameState, card: Card): boolean {
     case 'S': {
       if (player.tableau.length === 0) return false;
       const available = emptyClubSlots(player);
-      const handAfterPlaying = player.hand.length - 1;
-      return available >= 1 && handAfterPlaying >= 1 && card.band >= 1;
+      const deckPool = state.draw.length + state.discard.length;
+      return available >= 1 && deckPool >= 1;
     }
     case 'H': {
       return storedGoodsCount(player) >= 1;
@@ -73,8 +74,12 @@ export function winnerIndex(state: GameState): 0 | 1 | null {
   return null;
 }
 
-export function canFollowProduce(player: PlayerState): boolean {
-  return emptyClubSlots(player) >= 1 && player.hand.length >= 1;
+export function canFollowProduce(
+  player: PlayerState,
+  state: GameState,
+): boolean {
+  const deckPool = state.draw.length + state.discard.length;
+  return emptyClubSlots(player) >= 1 && deckPool >= 1;
 }
 
 export function canFollowSell(player: PlayerState): boolean {
@@ -83,6 +88,7 @@ export function canFollowSell(player: PlayerState): boolean {
 
 export function canFollowBuild(player: PlayerState): boolean {
   return player.hand.some(
-    (c) => c.suit === 'C' && player.hand.length - 1 >= c.band,
+    (c) =>
+      c.suit === 'C' && player.hand.length - 1 >= clubCostForRank(c.rank),
   );
 }
